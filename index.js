@@ -77,7 +77,23 @@ async function run() {
 
         app.post('/booking', async (req, res) => {
             const booking = req.body; //get booking data
-            // console.log(booking);
+            console.log(booking);
+
+            /* limit 1 booking per user, per treatmentName/service, per day  */
+            const query = {
+                bookingDate: booking.bookingDate,
+                treatmentName: booking.treatmentName,
+                email: booking.email
+            }
+
+            const alreadyBooked = await bookingCollection.find(query).toArray();
+
+            if (alreadyBooked.length) {
+                const message = `You already have a bookiong on ${booking.bookingDate} for ${booking.treatmentName}`;
+                return res.send({ acknowledged: false, message });
+            }
+            /*-------------------------------------------*/
+
             const result = await bookingCollection.insertOne(booking);
             res.send(result)
         })
