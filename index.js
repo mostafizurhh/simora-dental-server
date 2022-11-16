@@ -49,6 +49,26 @@ async function run() {
         app.get('/AppoinmentOptions', async (req, res) => {
             const query = {};
             const options = await appoinmentOptionsCollection.find(query).toArray();
+
+            /* use Aggregate to query multiple collection and then merge data */
+
+            /* get all bookings for the selected date */
+            const date = req.query.date;
+            // console.log(date)
+            const bookingQuery = { bookingDate: date }
+            const alreadyBooked = await bookingCollection.find(bookingQuery).toArray();
+
+            /* find already booked time slots for each day and for each treatmentName  */
+            options.forEach(option => {
+                const optionBooked = alreadyBooked.filter(book => book.treatmentName === option.name);
+                const bookedSlots = optionBooked.map(book => book.slot)
+
+                /* find remaining time slots for each day for each treatmentName */
+                const remainingSlots = option.slots.filter(slot => !bookedSlots.includes(slot))
+                option.slots = remainingSlots
+                // console.log(date, option.name, remainingSlots.length)
+            })
+
             res.send(options);
         })
 
@@ -57,7 +77,7 @@ async function run() {
 
         app.post('/booking', async (req, res) => {
             const booking = req.body; //get booking data
-            console.log(booking);
+            // console.log(booking);
             const result = await bookingCollection.insertOne(booking);
             res.send(result)
         })
