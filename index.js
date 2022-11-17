@@ -72,6 +72,7 @@ async function run() {
             res.send(options);
         })
 
+
         /* (CREATE) create/get single data from client side and create a collection in mongoDB under initial DB from that data */
         const bookingCollection = client.db('simora').collection('userBooking')
 
@@ -97,10 +98,18 @@ async function run() {
             const result = await bookingCollection.insertOne(booking);
             res.send(result)
         })
+
+        /* get specific user's booking from DB and show on UI */
+        app.get('/booking', async (req, res) => {
+            const email = req.query.email;
+            console.log(email);
+            const query = { email: email };
+            const userBooking = await bookingCollection.find(query).toArray();
+            res.send(userBooking)
+        })
     }
     finally {
 
     }
-
 }
 run().catch(console.log)
