@@ -12,6 +12,7 @@
 const express = require('express');
 const cors = require('cors');
 const port = process.env.PORT || 5000;
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
 
@@ -102,11 +103,23 @@ async function run() {
         /* get specific user's booking from DB and show on UI */
         app.get('/booking', async (req, res) => {
             const email = req.query.email;
-            console.log(email);
+            // console.log(email);
             const query = { email: email };
             const userBooking = await bookingCollection.find(query).toArray();
             res.send(userBooking)
         });
+
+        /* create JWT token API */
+        app.get('/jwt', async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const user = await usersCollection.find(query);
+            if (user) {
+                const jwtToken = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '7d' });
+                res.send({ accessToken: jwtToken })
+            }
+            res.status(403).send({ accessToken: '' })
+        })
 
         /* get data from client side and save to DB 'simora' in 'userCollection' */
         const usersCollection = client.db('simora').collection('users')
