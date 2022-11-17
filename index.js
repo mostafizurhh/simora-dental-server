@@ -106,6 +106,14 @@ async function run() {
             const query = { email: email };
             const userBooking = await bookingCollection.find(query).toArray();
             res.send(userBooking)
+        });
+
+        /* get data from client side and save to DB 'simora' in 'userCollection' */
+        const usersCollection = client.db('simora').collection('users')
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            const result = await usersCollection.insertOne(user);
+            res.send(result);
         })
     }
     finally {
