@@ -91,19 +91,6 @@ async function run() {
             res.send(options);
         })
 
-        /* create JWT token API */
-        app.get('/jwt', async (req, res) => {
-            const email = req.query.email;
-            const query = { email: email };
-            const user = await usersCollection.findOne(query);
-            // console.log(user)
-            if (user) {
-                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '7d' });
-                return res.send({ accessToken: token })
-            }
-            res.status(403).send({ token: '' })
-        })
-
 
         /* (CREATE) create/get single data from client side and create a collection in mongoDB under initial DB from that data */
         const bookingCollection = client.db('simora').collection('userBooking')
@@ -134,9 +121,9 @@ async function run() {
         /* get specific user's booking from DB and show on UI and verify JWT token*/
         app.get('/booking', verifyJWT, async (req, res) => {
             const email = req.query.email;
-            console.log(email);
+            // console.log(email);
             const decodedEmail = req.decoded.email;
-
+            // console.log(decodedEmail)
             if (email !== decodedEmail) {
                 return res.status(403).send({ message: 'Forbidden Access' });
             }
@@ -145,6 +132,19 @@ async function run() {
             const userBooking = await bookingCollection.find(query).toArray();
             res.send(userBooking)
         });
+
+        /* create JWT token API */
+        app.get('/jwt', async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            // console.log(user)
+            if (user) {
+                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '7d' });
+                return res.send({ accessToken: token })
+            }
+            res.status(403).send({ token: '' })
+        })
 
         /* get individual user data from client side and save to DB 'simora' in 'userCollection' */
         const usersCollection = client.db('simora').collection('users');
