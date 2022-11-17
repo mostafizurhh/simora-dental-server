@@ -31,7 +31,7 @@ app.listen(port, () => {
     console.log(`Server is running on port ${port}`)
 })
 
-/* create JWT verification function */
+/* create JWT verification function to verify JWT*/
 function verifyJWT(req, res, next) {
     const authHeader = req.headers.authorization;
 
@@ -40,6 +40,14 @@ function verifyJWT(req, res, next) {
     }
 
     const token = authHeader.split(' ')[1];
+
+    jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+        if (err) {
+            return res.status(403).send({ message: 'Forbidden Access' })
+        }
+        req.decoded = decoded;
+        next()
+    })
 }
 
 /* mongodb connection */
@@ -87,7 +95,7 @@ async function run() {
         /* (CREATE) create/get single data from client side and create a collection in mongoDB under initial DB from that data */
         const bookingCollection = client.db('simora').collection('userBooking')
 
-        app.post('/booking', verifyJWT, async (req, res) => {
+        app.post('/booking', async (req, res) => {
             const booking = req.body; //get booking data
             // console.log(booking);
 
@@ -110,15 +118,6 @@ async function run() {
             res.send(result)
         })
 
-        /* get specific user's booking from DB and show on UI */
-        app.get('/booking', async (req, res) => {
-            const email = req.query.email;
-            // console.log(email);
-            const query = { email: email };
-            const userBooking = await bookingCollection.find(query).toArray();
-            res.send(userBooking)
-        });
-
         /* create JWT token API */
         app.get('/jwt', async (req, res) => {
             const email = req.query.email;
@@ -130,6 +129,21 @@ async function run() {
             }
             res.status(403).send({ accessToken: '' })
         })
+
+        /* get specific user's booking from DB and show on UI and verify JWT token*/
+        app.get('/booking', verifyJWT, async (req, res) => {
+            const email = req.query.email;
+            // console.log(email);
+            const decodedEmail = req.decoded.email;
+
+            if (email !== decodedEmail) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+
+            const query = { email: email };
+            const userBooking = await bookingCollection.find(query).toArray();
+            res.send(userBooking)
+        });
 
         /* get data from client side and save to DB 'simora' in 'userCollection' */
         const usersCollection = client.db('simora').collection('users');
