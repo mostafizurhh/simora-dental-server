@@ -31,6 +31,16 @@ app.listen(port, () => {
     console.log(`Server is running on port ${port}`)
 })
 
+/* create JWT verification function */
+function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        return res.status(401).send('Unauthorized Access')
+    }
+
+    const token = authHeader.split(' ')[1];
+}
 
 /* mongodb connection */
 require('dotenv').config()
@@ -77,9 +87,9 @@ async function run() {
         /* (CREATE) create/get single data from client side and create a collection in mongoDB under initial DB from that data */
         const bookingCollection = client.db('simora').collection('userBooking')
 
-        app.post('/booking', async (req, res) => {
+        app.post('/booking', verifyJWT, async (req, res) => {
             const booking = req.body; //get booking data
-            console.log(booking);
+            // console.log(booking);
 
             /* limit 1 booking per user, per treatmentName/service, per day  */
             const query = {
@@ -122,7 +132,8 @@ async function run() {
         })
 
         /* get data from client side and save to DB 'simora' in 'userCollection' */
-        const usersCollection = client.db('simora').collection('users')
+        const usersCollection = client.db('simora').collection('users');
+
         app.post('/users', async (req, res) => {
             const user = req.body;
             const result = await usersCollection.insertOne(user);
