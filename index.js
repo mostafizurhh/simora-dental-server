@@ -13,7 +13,7 @@ const express = require('express');
 const cors = require('cors');
 const port = process.env.PORT || 5000;
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 const app = express();
@@ -118,7 +118,7 @@ async function run() {
             res.send(result)
         })
 
-        /* get specific user's booking from DB and show on UI and verify JWT token*/
+        /* (READ) get specific user's booking from DB and show on UI and verify JWT token*/
         app.get('/booking', verifyJWT, async (req, res) => {
             const email = req.query.email;
             // console.log(email);
@@ -133,7 +133,7 @@ async function run() {
             res.send(userBooking)
         });
 
-        /* create JWT token API */
+        /* (READ) create JWT token API from client side info */
         app.get('/jwt', async (req, res) => {
             const email = req.query.email;
             const query = { email: email };
@@ -146,12 +146,41 @@ async function run() {
             res.status(403).send({ token: '' })
         })
 
-        /* get individual user data from client side and save to DB 'simora' in 'userCollection' */
+        /* (CREATE) create/get individual user data from client side and save to DB 'simora' in 'userCollection' */
         const usersCollection = client.db('simora').collection('users');
 
         app.post('/users', async (req, res) => {
             const user = req.body;
             const result = await usersCollection.insertOne(user);
+            res.send(result);
+        })
+
+        /* (READ) get all registered users data */
+        app.get('/users', async (req, res) => {
+            const query = {};
+            const users = await usersCollection.find(query).toArray();
+            res.send(users);
+        })
+
+        /* (UPDATE) update Admin role for a user by creating an API and verifyJWT */
+        app.put('/users/admin/:id', verifyJWT, async (req, res) => {
+            const decodedEmail = req.decoded.email;
+            const query = { email: decodedEmail };
+            const user = await usersCollection.findOne(query);
+
+            if (user?.role !== 'admin') {
+                return res.status(403).send({ message: 'Forbidden Access' })
+            }
+
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: {
+                    role: 'admin'
+                }
+            }
+            const result = await usersCollection.updateOne(filter, updatedDoc, options);
             res.send(result);
         })
     }
