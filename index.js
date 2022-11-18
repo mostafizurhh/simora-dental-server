@@ -169,7 +169,7 @@ async function run() {
             const user = await usersCollection.findOne(query);
 
             if (user?.role !== 'admin') {
-                return res.status(403).send({ message: 'Forbidden Access' })
+                return res.status(401).send({ message: 'Unauthorized Access' })
             }
 
             const id = req.params.id;
@@ -182,6 +182,14 @@ async function run() {
             }
             const result = await usersCollection.updateOne(filter, updatedDoc, options);
             res.send(result);
+        })
+
+        /* (READ) API to check if a user is admin or not */
+        app.get('/users/admin/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            res.send({ isAdmin: user?.role === 'admin' });
         })
     }
     finally {
