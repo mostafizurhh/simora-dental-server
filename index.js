@@ -91,6 +91,13 @@ async function run() {
             res.send(options);
         })
 
+        /* (READ get all services/appoinmentOptions as speciality */
+        app.get('/specialities', async (req, res) => {
+            const query = {};
+            const result = await appoinmentOptionsCollection.find(query).project({ name: 1 }).toArray();
+            res.send(result);
+        })
+
 
         /* (CREATE) create/get single data from client side and create a collection in mongoDB under initial DB from that data */
         const bookingCollection = client.db('simora').collection('userBooking')
