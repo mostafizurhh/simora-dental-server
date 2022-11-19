@@ -31,7 +31,7 @@ app.listen(port, () => {
     console.log(`Server is running on port ${port}`)
 })
 
-/* create JWT verification function to verify JWT*/
+/* create JWT verification middleware/function to verify JWT*/
 function verifyJWT(req, res, next) {
     const authHeader = req.headers.authorization;
 
@@ -61,6 +61,19 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 
 async function run() {
     try {
+        /* Create verifyAdmin middleware/function */
+        const verifyAdmin = async (req, res, next) => {
+            const decodedEmail = req.decoded.email;
+            const query = { email: decodedEmail };
+            const user = await usersCollection.findOne(query);
+
+            if (user?.role !== 'admin') {
+                return res.status(401).send({ message: 'Unauthorized Access' })
+            }
+            next()
+
+        }
+
         /* create DB in mongoDB */
         const appoinmentOptionsCollection = client.db('simora').collection('AppoinmentOptions');
 
@@ -91,6 +104,19 @@ async function run() {
             res.send(options);
         })
 
+        /* insert price field to database in appoinmentOptionsCollection */
+        // app.get('/addPrice', async (req, res) => {
+        //     const query = {};
+        //     const options = { upsert: true };
+        //     const updatedDoc = {
+        //         $set: {
+        //             price: 99
+        //         }
+        //     }
+        //     const result = await appoinmentOptionsCollection.updateMany(query, updatedDoc, options)
+        //     res.send(result)
+        // })
+
         /* (READ get all services/appoinmentOptions as speciality */
         app.get('/specialities', async (req, res) => {
             const query = {};
@@ -119,7 +145,7 @@ async function run() {
                 const message = `You already have a bookiong on ${booking.bookingDate} for ${booking.treatmentName}`;
                 return res.send({ acknowledged: false, message });
             }
-            /*-------------------------------------------*/
+            /*-----------------------------------------*/
 
             const result = await bookingCollection.insertOne(booking);
             res.send(result)
@@ -139,6 +165,14 @@ async function run() {
             const userBooking = await bookingCollection.find(query).toArray();
             res.send(userBooking)
         });
+
+        /* (READ) get single booking info of a service of a user */
+        app.get('/booking/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await bookingCollection.findOne(query);
+            res.send(result);
+        })
 
         /* (READ) create JWT token API from client side info */
         app.get('/jwt', async (req, res) => {
@@ -170,15 +204,7 @@ async function run() {
         })
 
         /* (UPDATE) update Admin role for a user by creating an API and verifyJWT */
-        app.put('/users/admin/:id', verifyJWT, async (req, res) => {
-            const decodedEmail = req.decoded.email;
-            const query = { email: decodedEmail };
-            const user = await usersCollection.findOne(query);
-
-            if (user?.role !== 'admin') {
-                return res.status(401).send({ message: 'Unauthorized Access' })
-            }
-
+        app.put('/users/admin/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: ObjectId(id) };
             const options = { upsert: true };
@@ -188,6 +214,14 @@ async function run() {
                 }
             }
             const result = await usersCollection.updateOne(filter, updatedDoc, options);
+            res.send(result);
+        })
+
+        /* (DELETE) delete users data */
+        app.delete('/users/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await usersCollection.deleteOne(query);
             res.send(result);
         })
 
@@ -202,27 +236,26 @@ async function run() {
         /* (CREATE) create doctorsCollection and insert data into it from client side */
         const doctorsCollection = client.db('simora').collection('doctors');
 
-        app.post('/doctors', async (req, res) => {
+        app.post('/doctors', verifyJWT, verifyAdmin, async (req, res) => {
             const doctor = req.body;
             const result = await doctorsCollection.insertOne(doctor);
             res.send(result);
         })
 
         /* (READ) get all doctors data from DB */
-        app.get('/doctors', async (req, res) => {
+        app.get('/doctors', verifyJWT, verifyAdmin, async (req, res) => {
             const query = {};
             const result = await doctorsCollection.find(query).toArray();
             res.send(result);
         })
 
         /* (DELETE) delete a doctor from server and DB by client side command */
-        app.delete('/doctors/:id', async (req, res) => {
+        app.delete('/doctors/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const result = await doctorsCollection.deleteOne(query);
             res.send(result);
         })
-
     }
     finally {
 
