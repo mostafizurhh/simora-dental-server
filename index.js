@@ -215,6 +215,14 @@ async function run() {
             res.send(result);
         })
 
+        /* (DELETE) delete a doctor from server and DB by client side command */
+        app.delete('/doctors/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await doctorsCollection.deleteOne(query);
+            res.send(result);
+        })
+
     }
     finally {
 
