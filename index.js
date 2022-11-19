@@ -198,6 +198,23 @@ async function run() {
             const user = await usersCollection.findOne(query);
             res.send({ isAdmin: user?.role === 'admin' });
         })
+
+        /* (CREATE) create doctorsCollection and insert data into it from client side */
+        const doctorsCollection = client.db('simora').collection('doctors');
+
+        app.post('/doctors', async (req, res) => {
+            const doctor = req.body;
+            const result = await doctorsCollection.insertOne(doctor);
+            res.send(result);
+        })
+
+        /* (READ) get all doctors data from DB */
+        app.get('/doctors', async (req, res) => {
+            const query = {};
+            const result = await doctorsCollection.find(query).toArray();
+            res.send(result);
+        })
+
     }
     finally {
 
