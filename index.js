@@ -14,7 +14,7 @@ const cors = require('cors');
 const port = process.env.PORT || 5000;
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-
+const stripe = require("stripe")(process.env.STRIPE_SECRET)
 
 const app = express();
 
@@ -71,7 +71,6 @@ async function run() {
                 return res.status(401).send({ message: 'Unauthorized Access' })
             }
             next()
-
         }
 
         /* create DB in mongoDB */
@@ -174,6 +173,24 @@ async function run() {
             res.send(result);
         })
 
+        /* crete API for stripe */
+        app.post('/create-payment-intent', async (req, res) => {
+            const booking = req.body;
+            const price = booking.price;
+            const amount = price * 100;
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                currency: 'usd',
+                amount: amount,
+                "payment_method_types": [
+                    "card"
+                ]
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        })
+
         /* (READ) create JWT token API from client side info */
         app.get('/jwt', async (req, res) => {
             const email = req.query.email;
@@ -256,6 +273,8 @@ async function run() {
             const result = await doctorsCollection.deleteOne(query);
             res.send(result);
         })
+
+
     }
     finally {
 
