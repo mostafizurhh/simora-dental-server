@@ -14,7 +14,7 @@ const cors = require('cors');
 const port = process.env.PORT || 5000;
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const stripe = require("stripe")(process.env.STRIPE_SECRET)
+const stripe = require("stripe")("sk_test_51M5xTOEjKmhiTrYBMHYiby5C3o2rP0RApy4qROYcuPMbgY8V97lON3nzB1No7YQRkn4uhxR3T4byVuwRPOyk7yuc000dfIMeod")
 
 const app = express();
 
@@ -173,23 +173,6 @@ async function run() {
             res.send(result);
         })
 
-        /* crete API for stripe */
-        app.post('/create-payment-intent', async (req, res) => {
-            const booking = req.body;
-            const price = booking.price;
-            const amount = price * 100;
-
-            const paymentIntent = await stripe.paymentIntents.create({
-                currency: 'usd',
-                amount: amount,
-                "payment_method_types": [
-                    "card"
-                ]
-            });
-            res.send({
-                clientSecret: paymentIntent.client_secret,
-            });
-        })
 
         /* (READ) create JWT token API from client side info */
         app.get('/jwt', async (req, res) => {
@@ -203,6 +186,7 @@ async function run() {
             }
             res.status(403).send({ token: '' })
         })
+
 
         /* (CREATE) create/get individual user data from client side and save to DB 'simora' in 'userCollection' */
         const usersCollection = client.db('simora').collection('users');
@@ -274,7 +258,41 @@ async function run() {
             res.send(result);
         })
 
+        /* create Payment collection to save users payment info */
+        const usersPaymentCollection = client.db('simora').collection('userPayments');
 
+        /* crete API for stripe */
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+            const booking = req.body;
+            const price = booking.price;
+            const amount = price * 100;
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                currency: 'usd',
+                amount: amount,
+                "payment_method_types": [
+                    "card"
+                ]
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            });
+        })
+
+        app.post('/userPayments', async (req, res) => {
+            const payment = req.body;
+            const result = await usersPaymentCollection.insertOne(payment);
+            const id = payment.bookingId;
+            const query = { _id: ObjectId(id) }
+            const updatedDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
+            }
+            const updatedResult = await bookingCollection.updateOne(query, updatedDoc);
+            res.send(result)
+        })
     }
     finally {
 
