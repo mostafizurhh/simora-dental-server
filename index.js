@@ -12,7 +12,12 @@
 const express = require('express');
 const cors = require('cors');
 const port = process.env.PORT || 5000;
+require('dotenv').config();
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+// const sgmail = require('@sendgrid/mail');
+// var sgTransport = require('nodemailer-sendgrid-transport');
+const mg = require('nodemailer-mailgun-transport');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const stripe = require("stripe")("sk_test_51M5xTOEjKmhiTrYBMHYiby5C3o2rP0RApy4qROYcuPMbgY8V97lON3nzB1No7YQRkn4uhxR3T4byVuwRPOyk7yuc000dfIMeod")
 
@@ -50,8 +55,85 @@ function verifyJWT(req, res, next) {
     })
 }
 
+/* Create transporter for nodemailer to send email to user */
+function sendBookingEmail(booking) {
+    const { email, treatmentName, bookingDate, slot } = booking;
+
+    /* MailGun */
+    const auth = {
+        auth: {
+            api_key: process.env.SEND_EMAIL_API_KEY,
+            domain: process.env.SEND_EMAIL_DOMAIN
+        }
+    }
+    const transporter = nodemailer.createTransport(mg(auth));
+    /* *************************************************** */
+
+
+    //     sgmail.setApiKey(process.env.SENDGRID_API_KEY)
+    //     const msg = {
+    //         to: email,
+    //         from: 'mostafizur.iubat.eee@gmail.com',
+    //         subject: `Booking Confirmation for ${treatmentName}`,
+    //         html: `
+    //          <h3>Your Booking is confirmed</h3>
+    //          <div>
+    //          <p>Your appoinment for ${treatmentName} on ${bookingDate} at ${slot} is confirmed. Please try to be presnet at our office 15 minutes earlier from your booking time.</p>
+    //         <p>If you have any concern don't hesitate to contact us at +8801725353614</p>
+    //          <p>Have a lovely day.</p>
+    //          <p>Thanks for being connected with Simora Dental</p>
+    //          </div> 
+    //          `
+    //     }
+
+    //     sgmail
+    //         .send(msg)
+    //         .then(() => { console.log('Email Sent') })
+    //         .catch((e) => console.error(e))
+    // const options = {
+    //     auth: {
+
+    //         api_key: process.env.SENDGRID_API_KEY
+    //     }
+    // }
+
+    // const transporter = nodemailer.createTransport(sgTransport(options));
+
+    // let transporter = nodemailer.createTransport({
+    //     host: 'smtp.sendgrid.net',
+    //     port: 587,
+    //     auth: {
+    //         user: "apikey",
+    //         pass: process.env.SENDGRID_API_KEY
+    //     }
+    // });
+
+    transporter.sendMail({
+        from: 'mostafizur.iubat.eee@gmail.com', // verified sender email
+        to: email, // recipient email
+        subject: `Booking Confirmation for ${treatmentName}`, // Subject line
+        text: "Hello world!", // plain text body
+        html: `
+        <h3>Your Booking is confirmed</h3>
+        <div>
+        <p>Your appoinment for ${treatmentName} on ${bookingDate} at ${slot} is confirmed. Please try to be presnet at our office 15 minutes earlier from your booking time.</p>
+        <p>If you have any concern don't hesitate to contact us at +8801725353614</p>
+        <p>Have a lovely day.</p>
+        <p>Thanks for being connected with Simora Dental</p>
+        </div> 
+        `, // html body
+    }, function (error, info) {
+        if (error) {
+            console.log(error);
+        } else {
+            console.log('Email sent: ' + info.response);
+        }
+    });
+}
+
+
+
 /* mongodb connection */
-require('dotenv').config()
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.mniec4l.mongodb.net/?retryWrites=true&w=majority`;
 
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
@@ -147,6 +229,8 @@ async function run() {
             /*-----------------------------------------*/
 
             const result = await bookingCollection.insertOne(booking);
+            /* send booking confirmation email to user */
+            sendBookingEmail(booking)
             res.send(result)
         })
 
@@ -170,6 +254,14 @@ async function run() {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const result = await bookingCollection.findOne(query);
+            res.send(result);
+        })
+
+        /* delete a booking */
+        app.delete('/booking/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await bookingCollection.deleteOne(query);
             res.send(result);
         })
 
